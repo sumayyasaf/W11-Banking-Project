@@ -1,33 +1,19 @@
-public abstract class Account {
+import java.io.Serializable;
+
+public abstract class Account implements Serializable {
     private String accountHolder;
     private double balance;
-    private static int accountID_global = 10001;
+    private static int ACCOUNTID_COUNTER = 10001;
     private final int accountID;
-    public static double withdrawLimit_global = 100000;  // a class-wide constant
+    public static double WITHDRAW_LIMIT = 100000;  // a class-wide constant
     private double withdrawLimit;
 
     public Account(String accountHolder, double balance,double withdrawLimit) {
         this.accountHolder = accountHolder;
         this.balance = balance;
-        this.accountID = accountID_global++;
+        this.accountID = ACCOUNTID_COUNTER++;
         this.withdrawLimit = withdrawLimit;
 
-    }
-
-    public static int getAccountID_global() {
-        return accountID_global++;
-    }
-
-    public static void setAccountID_global(int accountID_global) {
-        Account.accountID_global = accountID_global;
-    }
-
-    public String getAccountHolder() {
-        return accountHolder;
-    }
-
-    public void setAccountHolder(String accountHolder) {
-        this.accountHolder = accountHolder;
     }
 
     public double getBalance() {
@@ -53,9 +39,6 @@ public abstract class Account {
         return this.withdrawLimit;
     }
 
-    public void setWithdrawLimit(double withdrawLimit) {
-        this.withdrawLimit = withdrawLimit;
-    }
 }
 
 

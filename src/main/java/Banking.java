@@ -1,16 +1,17 @@
-import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.Scanner;
 
 public class Banking {
-    public static ArrayList<User> users = new ArrayList<>();
+    public static List<User> users = UserRW.readUsersFromFile("userdata.txt");
     static User currentUser = null;
     static Scanner scanner = new Scanner(System.in);
 
 
     public static void main(String[] args) {
+        boolean isRunning = true;
 
-        while (true) {
+        while (isRunning) {
             System.out.println("Welcome to the Banking Application.");
             System.out.println("1. Signup ");
             System.out.println("2. Login ");
@@ -27,7 +28,10 @@ public class Banking {
                     break;
                 case 3:
                     System.out.println("Exiting the application.");
+                    isRunning = false;
+                    UserRW.writeUsersToFile(users,"userdata.txt");
                     break;
+
                 default:
                     System.out.println("Invalid option. Try again.");
             }
@@ -77,8 +81,8 @@ public class Banking {
         while (true) {
             if (isDouble(withdrawAmountStr)) {
                 System.out.println("Please enter a valid number");
-            } else if (Double.parseDouble(withdrawAmountStr) > Account.withdrawLimit_global) {
-                System.out.println("Withdraw limit should be less than :" + Account.withdrawLimit_global);
+            } else if (Double.parseDouble(withdrawAmountStr) > Account.WITHDRAW_LIMIT) {
+                System.out.println("Withdraw limit should be less than :" + Account.WITHDRAW_LIMIT);
             } else {
                 withdrawLimit = Double.parseDouble(withdrawAmountStr);
                 break;
@@ -86,25 +90,30 @@ public class Banking {
             withdrawAmountStr = scanner.nextLine();
         }
         System.out.println("which account would you like to have - a Checking or a Savings?");
-        String c = scanner.nextLine();
+        String accountType = scanner.nextLine().toLowerCase();
         Account userAccount;
         while (true) {
-            if (Objects.equals(c, "Checking")) {
+            if (Objects.equals(accountType, "checking")) {
                 userAccount = new CheckingAccount(username, depositAmount, withdrawLimit);
                 break;
-            } else if (Objects.equals(c, "Savings")) {
+
+            } else if (Objects.equals(accountType, "savings")) {
                 userAccount = new SavingsAccount(username, depositAmount, withdrawLimit);
                 break;
+
             } else {
                 System.out.println("please enter valid account type.");
+                accountType = scanner.nextLine();
             }
+
         }
         User user1 = new User(username, password, firstName, userAccount);
 
         users.add(user1);
-        System.out.println("User registered successfully " + user1.getUsername());
+        System.out.println("User " + user1.getUsername() + " registered successfully");
 
     }
+
 
     private static boolean isDouble(String depositAmountStr) {
         try {
@@ -159,6 +168,7 @@ public class Banking {
             loggedInMenu();
         }
     }
+
 
     public static void loggedInMenu() {
         while (true) {
@@ -216,6 +226,10 @@ public class Banking {
         } else {
             currentUser.getUserAccount().setBalance(currentUser.getUserAccount().getBalance() + depositAmount);
             System.out.println("Deposited " + depositAmount + ". New Balance: " + currentUser.getUserAccount().getBalance());
+            if(currentUser.getUserAccount().isOverdraftsAllowed() && currentUser.getUserAccount().getBalance() >= 0){
+                CheckingAccount checkingAccount = (CheckingAccount) currentUser.getUserAccount();
+                checkingAccount.resetOverDraftCount();  //overdraft count set to zero
+            }
         }
     }
 
@@ -227,57 +241,83 @@ public class Banking {
         } else if (withdrawAmount > currentUser.getUserAccount().getWithdrawLimit()) {
             System.out.println("Amount cannot exceed withdraw limit.");
         } else {
-            currentUser.getUserAccount().setBalance(currentUser.getUserAccount().getBalance() - withdrawAmount);
-            System.out.println("Withdrew : " + withdrawAmount + ". New Balance :" + currentUser.getUserAccount().getBalance());
-        }
-    }
-
-    //Allow users to reset their password by verifying their original password.
-    public static void resetPassword() {
-        System.out.println("Enter your current password: ");
-        String oldPassword = scanner.nextLine().trim();
-        if (oldPassword.equals(currentUser.getPassword())) {
-            System.out.println("Enter new Password: ");
-            String newPassword = scanner.nextLine().trim();
-
-            if (newPassword.length() >= 6) {
-                currentUser.setPassword(newPassword);
-                System.out.println("Password reset successfully.");
-            } else {
-                System.out.println("Password must be at least 6 characters.");
-            }
-        } else {
-            System.out.println("Incorrect current password.");
-        }
-    }
-
-    //Allow transfers between accounts using account IDs.
-    private static void accountTransfer() {
-        System.out.println("Please enter account id for recipient : ");
-        int accountID = scanner.nextInt();
-        if(users.stream().noneMatch(u->u.getUserAccount().getAccountID() == accountID)){ // Check if recipient exists
-            System.out.println("no such recipient exits");
-        } else {
-            System.out.println("please enter amount to be transferred: ");
-            double transferAmount = scanner.nextDouble();
-            if(transferAmount> currentUser.getUserAccount().getBalance()){ // Check if the current user has sufficient balance
-                System.out.println("you have no sufficient balance ");
-            } else {
-                User recipient = null;
-                for(User user : users){ //  // Find recipient in the users list
-                    if(user.getUserAccount().getAccountID() == accountID){
-                        recipient = user;
-                        break;
+            if (withdrawAmount > currentUser.getUserAccount().getBalance()) {
+                if (currentUser.getUserAccount().isOverdraftsAllowed()) { //checking if the account is checking pr savings
+                    CheckingAccount checkingAccount = (CheckingAccount) currentUser.getUserAccount(); //parsing it to checkingaccount instantiating
+                    if (checkingAccount.getOverDraftCount() < CheckingAccount.OVERDRAFT_LIMIT) {
+                        checkingAccount.incrementOverDraftCount(); //get current overdraftcount
+                        //  checkingAccount.setOverDraftCount(checkingAccount.getOverDraftCount()+1);
+                        currentUser.getUserAccount().setBalance(currentUser.getUserAccount().getBalance() - withdrawAmount-CheckingAccount.PENALTY);
+                        System.out.println("Insufficient funds. Overdraft applied. New Balance :" + currentUser.getUserAccount().getBalance() + "  Penalty: " + CheckingAccount.PENALTY);
+                    } else {
+                        System.out.println("Overdraft limit reached.");
                     }
-                } // Perform the transfer if recipient is found
-                System.out.println("transferring amount to user" + recipient.getUsername()+ "with account id" + recipient.getUserAccount().getAccountID());
-                currentUser.getUserAccount().setBalance(currentUser.getUserAccount().getBalance()-transferAmount);
-                recipient.getUserAccount().setBalance(recipient.getUserAccount().getBalance()+transferAmount);
+                } else {
+                    System.out.println("Insufficient funds. Withdrawal not allowed");
+                }
+
+            } else {
+                currentUser.getUserAccount().setBalance (currentUser.getUserAccount().getBalance()-withdrawAmount);
+                System.out.println("Withdrew : " + withdrawAmount + ". New Balance :" + currentUser.getUserAccount().getBalance());
             }
+
 
         }
     }
-}
+
+
+        //Allow users to reset their password by verifying their original password.
+        public static void resetPassword () {
+            System.out.println("Enter your current password: ");
+            String oldPassword = scanner.nextLine().trim();
+            if (oldPassword.equals(currentUser.getPassword())) {
+                System.out.println("Enter new Password: ");
+                String newPassword = scanner.nextLine().trim();
+
+                if (newPassword.length() >= 6) {
+                    currentUser.setPassword(newPassword);
+                    System.out.println("Password reset successfully.");
+                } else {
+                    System.out.println("Password must be at least 6 characters.");
+                }
+            } else {
+                System.out.println("Incorrect current password.");
+            }
+        }
+
+        //Allow transfers between accounts using account IDs.
+        private static void accountTransfer () {
+            System.out.println("Please enter account id for recipient : ");
+            int accountID = scanner.nextInt();
+            if (users.stream().noneMatch(u -> u.getUserAccount().getAccountID() == accountID)) { // Check if recipient exists
+                System.out.println("no such recipient exits");
+            } else {
+                System.out.println("please enter amount to be transferred: ");
+                double transferAmount = scanner.nextDouble();
+                if (transferAmount > currentUser.getUserAccount().getBalance()) { // Check if the current user has sufficient balance
+                    System.out.println("you have no sufficient balance ");
+                } else {
+                    User recipient = null;
+                    for (User user : users) { //  // Find recipient in the users list
+                        if (user.getUserAccount().getAccountID() == accountID) {
+                            recipient = user;
+                            break;
+                        }
+                    } // Perform the transfer if recipient is found
+                    System.out.println("transferring amount to user" + recipient.getUsername() + "with account id" + recipient.getUserAccount().getAccountID());
+                    currentUser.getUserAccount().setBalance(currentUser.getUserAccount().getBalance() - transferAmount);
+                    recipient.getUserAccount().setBalance(recipient.getUserAccount().getBalance() + transferAmount);
+                }
+
+            }
+        }
+    }
+
+
+
+
+
+
 
 
 

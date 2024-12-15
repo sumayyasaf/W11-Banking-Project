@@ -1,4 +1,6 @@
-public class User {
+import java.io.Serializable;
+
+public class User implements Serializable {
     private String username;
     private String password;
     private String firstName;
@@ -44,6 +46,16 @@ public class User {
 
     public void setUserAccount(Account userAccount) {
         this.userAccount = userAccount;
+    }
+
+    @Override
+    public String toString() {
+        return "User{" +
+                "username='" + username + '\'' +
+                ", password='" + password + '\'' +
+                ", firstName='" + firstName + '\'' +
+                ", userAccount=" + userAccount +
+                '}';
     }
 }
 
