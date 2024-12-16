@@ -1,9 +1,9 @@
-import java.util.List;
+import java.util.ArrayList;
 import java.util.Objects;
 import java.util.Scanner;
 
 public class Banking {
-    public static List<User> users = UserRW.readUsersFromFile("userdata.txt");
+   public static ArrayList<User> users = new ArrayList<>();
     static User currentUser = null;
     static Scanner scanner = new Scanner(System.in);
 
@@ -29,7 +29,6 @@ public class Banking {
                 case 3:
                     System.out.println("Exiting the application.");
                     isRunning = false;
-                    UserRW.writeUsersToFile(users,"userdata.txt");
                     break;
 
                 default:
@@ -304,7 +303,7 @@ public class Banking {
                             break;
                         }
                     } // Perform the transfer if recipient is found
-                    System.out.println("transferring amount to user" + recipient.getUsername() + "with account id" + recipient.getUserAccount().getAccountID());
+                    System.out.println("Transferring amount to user " + recipient.getUsername() + " with account ID  " + recipient.getUserAccount().getAccountID());
                     currentUser.getUserAccount().setBalance(currentUser.getUserAccount().getBalance() - transferAmount);
                     recipient.getUserAccount().setBalance(recipient.getUserAccount().getBalance() + transferAmount);
                 }

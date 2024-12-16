@@ -1,6 +1,4 @@
-import java.io.Serializable;
-
-public abstract class Account implements Serializable {
+public abstract class Account  {
     private String accountHolder;
     private double balance;
     private static int ACCOUNTID_COUNTER = 10001;
